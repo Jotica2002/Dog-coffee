@@ -46,7 +46,7 @@ function DebtorCard({
       <div className="bg-background/50 rounded-lg p-3 mb-3">
         <CurrencyDisplay
           amountUsd={transaction.amount_usd}
-          exchangeRate={transaction.exchange_rate || exchangeRate}
+          exchangeRate={exchangeRate}
           size="lg"
           className="text-foreground font-bold"
         />
@@ -87,7 +87,7 @@ export default function Deudores() {
       // ¡Aquí está la magia de Supabase!
       const { error } = await supabase
         .from("transactions")
-        .update({ status: "Pagado" })
+        .update({ status: "Pagado", exchange_rate: exchangeRate })
         .eq("id", id);
 
       if (error) throw error;
