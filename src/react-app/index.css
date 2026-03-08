@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dog Coffee Theme - Warm & Inviting */
+    --background: 48 100% 96%; /* Light warm cream background */
+    --foreground: 0 0% 7%; /* Deep black #121212 */
+    --card: 48 71% 81%; /* Bun Cream #F3E5AB */
+    --card-foreground: 0 0% 7%;
+    --popover: 48 71% 81%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 33 100% 50%; /* Bright Orange #FF8F00 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 60% 90%;
+    --secondary-foreground: 0 0% 7%;
+    --muted: 48 40% 88%;
+    --muted-foreground: 0 0% 35%;
+    --accent: 350 100% 86%; /* Subtle Pink #FFB6C1 */
+    --accent-foreground: 0 0% 7%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 33 30% 80%;
+    --input: 48 50% 92%;
+    --ring: 33 100% 50%;
+    --radius: 0.75rem;
+    --chart-1: 33 100% 50%;
+    --chart-2: 350 100% 86%;
+    --chart-3: 48 71% 70%;
+    --chart-4: 120 40% 50%;
+    --chart-5: 200 70% 50%;
+    --sidebar: 48 71% 85%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 33 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 350 100% 86%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 33 30% 80%;
+    --sidebar-ring: 33 100% 50%;
+  }
+
+  .dark {
+    --background: 30 15% 10%;
+    --foreground: 48 71% 95%;
+    --card: 30 20% 15%;
+    --card-foreground: 48 71% 95%;
+    --popover: 30 20% 15%;
+    --popover-foreground: 48 71% 95%;
+    --primary: 33 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 15% 20%;
+    --secondary-foreground: 48 71% 95%;
+    --muted: 30 10% 25%;
+    --muted-foreground: 48 30% 65%;
+    --accent: 350 70% 70%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 10% 25%;
+    --input: 30 15% 20%;
+    --ring: 33 100% 50%;
+    --chart-1: 33 100% 55%;
+    --chart-2: 350 80% 75%;
+    --chart-3: 48 60% 60%;
+    --chart-4: 120 50% 55%;
+    --chart-5: 200 70% 55%;
+    --sidebar: 30 20% 12%;
+    --sidebar-foreground: 48 71% 95%;
+    --sidebar-primary: 33 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 350 70% 70%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 30 10% 25%;
+    --sidebar-ring: 33 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter Variable", "Inter", system-ui, sans-serif;
+  }
+
+  button:not([disabled]),
+  [role="button"]:not([disabled]) {
+    cursor: pointer;
+  }
+}
