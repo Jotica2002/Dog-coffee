@@ -5,19 +5,27 @@ import { Button } from "@/react-app/components/ui/button";
 import { Input } from "@/react-app/components/ui/input";
 import { Label } from "@/react-app/components/ui/label";
 import { useSettings } from "@/react-app/hooks/useSettings";
-import { DollarSign, Loader2, Save, TrendingUp } from "lucide-react";
+import { DollarSign, Loader2, Save, TrendingUp, LogOut } from "lucide-react";
+import { supabase } from "@/react-app/supabase";
+import { useNavigate } from "react-router";
 
 export default function Configuracion() {
   const { settings, loading, updateExchangeRate } = useSettings();
   const [rate, setRate] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
 
   const currentRate = settings?.current_exchange_rate_ves || 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const numRate = parseFloat(rate);
     if (isNaN(numRate) || numRate <= 0) {
       setMessage("Por favor ingresa una tasa válida");
@@ -28,7 +36,7 @@ export default function Configuracion() {
     setMessage("");
 
     const success = await updateExchangeRate(numRate);
-    
+
     if (success) {
       setMessage("Tasa de cambio actualizada correctamente");
       setRate("");
@@ -106,11 +114,10 @@ export default function Configuracion() {
 
             {message && (
               <div
-                className={`p-3 rounded-lg text-sm ${
-                  message.includes("Error")
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-green-100 text-green-700"
-                }`}
+                className={`p-3 rounded-lg text-sm ${message.includes("Error")
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-green-100 text-green-700"
+                  }`}
               >
                 {message}
               </div>
@@ -143,6 +150,43 @@ export default function Configuracion() {
             cambios se aplicarán inmediatamente a todas las vistas del sistema.
             Todas las transacciones se guardan en USD y se convierten a VES
             usando esta tasa.
+          </p>
+        </div>
+        {/* Close Register and Logout Section */}
+        <div className="mt-8 pt-6 border-t border-border space-y-4">
+          <div className="bg-destructive/10 rounded-xl p-6 border border-destructive/20 mb-6">
+            <h3 className="text-lg font-semibold text-destructive mb-2">Cierre de Caja</h3>
+            <p className="text-sm text-destructive/80 mb-4">
+              Archiva todas las transacciones actuales marcadas como "Pagado" para empezar un nuevo ciclo. Las deudas pendientes se mantendrán.
+            </p>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (window.confirm("¿Estás seguro de realizar el cierre de caja? Esto archivará las transacciones actuales.")) {
+                  setSaving(true);
+                  const { error } = await supabase.from("transactions").update({ status: "Archivado" }).eq("status", "Pagado");
+                  if (error) alert("Error: " + error.message);
+                  else alert("Cierre de caja exitoso");
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+              className="w-full font-semibold"
+            >
+              Realizar Cierre de Caja
+            </Button>
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="w-full font-semibold border-destructive text-destructive hover:bg-destructive hover:text-white"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Cerrar Sesión
+          </Button>
+          <p className="text-center text-xs text-muted-foreground mt-4 italic">
+            Sesión persistente activada (Permanecerás logueado al cerrar el navegador)
           </p>
         </div>
       </main>

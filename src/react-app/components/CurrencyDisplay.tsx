@@ -1,6 +1,7 @@
 interface CurrencyDisplayProps {
   amountUsd: number;
-  exchangeRate: number;
+  exchangeRate?: number;
+  amountVesExact?: number;
   showVes?: boolean;
   className?: string;
   size?: "sm" | "md" | "lg";
@@ -8,12 +9,13 @@ interface CurrencyDisplayProps {
 
 export default function CurrencyDisplay({
   amountUsd,
-  exchangeRate,
+  exchangeRate = 0,
+  amountVesExact,
   showVes = true,
   className = "",
   size = "md",
 }: CurrencyDisplayProps) {
-  const amountVes = amountUsd * exchangeRate;
+  const amountVes = amountVesExact !== undefined ? amountVesExact : amountUsd * exchangeRate;
 
   const sizeClasses = {
     sm: "text-sm",

@@ -11,11 +11,12 @@ export function useTransactions(limit?: number) {
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Iniciamos la consulta a nuestra tabla real en Supabase
       let query = supabase
         .from("transactions")
         .select("*")
+        .neq("status", "Archivado")
         .order("created_at", { ascending: false }); // Las más nuevas primero
 
       // Si la app pide un límite (ej. "las 5 transacciones recientes" del dashboard), lo aplicamos

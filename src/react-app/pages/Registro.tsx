@@ -58,7 +58,7 @@ export default function Registro() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!date || !transactionType || !amountUsd || !status) {
       alert("Por favor completa todos los campos requeridos");
       return;
@@ -74,8 +74,8 @@ export default function Registro() {
     try {
       // Ajustamos la fecha: Si es hoy, guarda la hora exacta. Si es un día anterior, le pone las 12 del mediodía para evitar saltos de zona horaria.
       const today = new Date().toISOString().split("T")[0];
-      const transactionDate = date === today 
-        ? new Date().toISOString() 
+      const transactionDate = date === today
+        ? new Date().toISOString()
         : new Date(date + "T12:00:00Z").toISOString();
 
       // ¡Aquí ocurre la magia! Escribimos directamente en Supabase
@@ -86,6 +86,7 @@ export default function Registro() {
           transaction_type: transactionType,
           description: description.trim() || "Venta de mostrador", // La DB requiere que no esté vacío
           amount_usd: parseFloat(amountUsd),
+          exchange_rate: exchangeRate,
           status: status,
           client_name: showClientNameField ? clientName.trim() : null,
           payment_method: paymentMethod.trim() || null,

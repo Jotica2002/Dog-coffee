@@ -1,5 +1,5 @@
 export type TransactionType = "Venta" | "Gasto" | "Inyección de Capital";
-export type TransactionStatus = "Pagado" | "Deudor" | "Personal";
+export type TransactionStatus = "Pagado" | "Deudor" | "Personal" | "Archivado";
 
 export interface SystemSettings {
   id: string;
@@ -14,6 +14,7 @@ export interface Transaction {
   transaction_type: TransactionType;
   description: string | null;
   amount_usd: number;
+  exchange_rate: number;
   status: TransactionStatus | null;
   client_name: string | null;
   payment_method: string | null;
@@ -23,7 +24,10 @@ export interface Transaction {
 
 export interface DashboardStats {
   cajaActual: number;
+  cajaActualVes: number;
   cuentasPorCobrar: number;
+  cuentasPorCobrarVes: number;
   ventasHoy: number;
+  ventasHoyVes: number;
   exchangeRate: number;
 }

@@ -46,7 +46,7 @@ function DebtorCard({
       <div className="bg-background/50 rounded-lg p-3 mb-3">
         <CurrencyDisplay
           amountUsd={transaction.amount_usd}
-          exchangeRate={exchangeRate}
+          exchangeRate={transaction.exchange_rate || exchangeRate}
           size="lg"
           className="text-foreground font-bold"
         />

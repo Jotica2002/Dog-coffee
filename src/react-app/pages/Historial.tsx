@@ -3,7 +3,9 @@ import Layout from "@/react-app/components/Layout";
 import CurrencyDisplay from "@/react-app/components/CurrencyDisplay";
 import { useDashboardStats } from "@/react-app/hooks/useDashboardStats";
 import { useTransactions } from "@/react-app/hooks/useTransactions";
-import { ArrowUpCircle, ArrowDownCircle, Wallet, Receipt } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Wallet, Receipt, Archive } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/react-app/components/ui/tabs";
+import { useArchivedTransactions, type ArchivedSummary } from "@/react-app/hooks/useArchivedTransactions";
 import type { Transaction } from "@/shared/types";
 
 function TransactionCard({
@@ -19,25 +21,28 @@ function TransactionCard({
   const Icon = isExpense
     ? ArrowDownCircle
     : isInjection
-    ? Wallet
-    : ArrowUpCircle;
+      ? Wallet
+      : ArrowUpCircle;
 
   const iconColor = isExpense
     ? "text-destructive"
     : isInjection
-    ? "text-blue-500"
-    : "text-primary";
+      ? "text-blue-500"
+      : "text-primary";
 
   const bgColor = isExpense
     ? "bg-destructive/10"
     : isInjection
-    ? "bg-blue-50"
-    : "bg-primary/10";
+      ? "bg-blue-50"
+      : "bg-primary/10";
 
-  const date = new Date(transaction.date).toLocaleDateString("es-VE", {
+  const date = new Date(transaction.created_at).toLocaleString("es-VE", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
   });
 
   return (
@@ -56,7 +61,7 @@ function TransactionCard({
             </div>
             <CurrencyDisplay
               amountUsd={Math.abs(transaction.amount_usd)}
-              exchangeRate={exchangeRate}
+              exchangeRate={transaction.exchange_rate || exchangeRate}
               size="sm"
               className={isExpense ? "text-destructive font-bold" : "text-foreground font-bold"}
             />
@@ -67,13 +72,12 @@ function TransactionCard({
             </span>
             {transaction.status && (
               <span
-                className={`text-xs px-2 py-1 rounded-full font-medium ${
-                  transaction.status === "Pagado"
-                    ? "bg-green-100 text-green-700"
-                    : transaction.status === "Deudor"
+                className={`text-xs px-2 py-1 rounded-full font-medium ${transaction.status === "Pagado"
+                  ? "bg-green-100 text-green-700"
+                  : transaction.status === "Deudor"
                     ? "bg-accent text-accent-foreground"
                     : "bg-blue-100 text-blue-700"
-                }`}
+                  }`}
               >
                 {transaction.status}
               </span>
@@ -95,9 +99,44 @@ function TransactionCard({
   );
 }
 
+function ArchivedDayCard({ summary }: { summary: ArchivedSummary }) {
+  const displayDate = new Date(summary.date + "T12:00:00Z").toLocaleDateString("es-VE", {
+    weekday: 'long',
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+
+  return (
+    <div className="bg-muted/20 rounded-lg p-4 shadow-sm border border-border">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-sm font-bold text-foreground capitalize">{displayDate}</p>
+          <p className="text-xs text-muted-foreground">{summary.count} transacciones archivadas</p>
+        </div>
+        <div className="p-2 bg-muted rounded-full">
+          <Archive className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </div>
+      <div className="bg-background/80 rounded-md p-3 border border-border/50">
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-muted-foreground font-medium">Total Cierre:</span>
+          <CurrencyDisplay
+            amountUsd={summary.totalUsd}
+            amountVesExact={summary.totalVesExact}
+            size="md"
+            className="font-bold text-foreground text-right"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Historial() {
   const { stats } = useDashboardStats();
   const { transactions, loading } = useTransactions();
+  const { archived, loading: archivedLoading } = useArchivedTransactions();
 
   const exchangeRate = stats?.exchangeRate || 0;
 
@@ -105,39 +144,83 @@ export default function Historial() {
     <Layout>
       <Header title="Historial" subtitle="Libro de transacciones" />
       <main className="px-4 py-6">
-        {loading ? (
-          <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[300px]">
-            <Receipt className="w-12 h-12 text-muted-foreground mb-4 animate-pulse" />
-            <p className="text-muted-foreground text-center">
-              Cargando transacciones...
-            </p>
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[300px]">
-            <Receipt className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              No hay transacciones registradas aún
-            </p>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Agrega tu primera transacción desde el Registro
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">
-                {transactions.length} transacción{transactions.length !== 1 ? "es" : ""}
-              </p>
-            </div>
-            {transactions.map((transaction) => (
-              <TransactionCard
-                key={transaction.id}
-                transaction={transaction}
-                exchangeRate={exchangeRate}
-              />
-            ))}
-          </div>
-        )}
+        <Tabs defaultValue="activas" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="activas">Activas</TabsTrigger>
+            <TabsTrigger value="cierres">Cierres Anteriores</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="activas">
+            {loading ? (
+              <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[300px]">
+                <Receipt className="w-12 h-12 text-muted-foreground mb-4 animate-pulse" />
+                <p className="text-muted-foreground text-center">
+                  Cargando transacciones...
+                </p>
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[300px]">
+                <Receipt className="w-12 h-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground text-center">
+                  No hay transacciones activas registradas aún
+                </p>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Agrega tu primera transacción desde el Registro
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    {transactions.length} transacción{transactions.length !== 1 ? "es" : ""}
+                  </p>
+                </div>
+                {transactions.map((transaction) => (
+                  <TransactionCard
+                    key={transaction.id}
+                    transaction={transaction}
+                    exchangeRate={exchangeRate}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="cierres">
+            {archivedLoading ? (
+              <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[300px]">
+                <Archive className="w-12 h-12 text-muted-foreground mb-4 animate-pulse" />
+                <p className="text-muted-foreground text-center">
+                  Cargando cierres...
+                </p>
+              </div>
+            ) : archived.length === 0 ? (
+              <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[300px]">
+                <Archive className="w-12 h-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground text-center">
+                  No hay cierres anteriores registrados
+                </p>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Los cierres aparecerán aquí cuando archives transacciones desde Configuración
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    {archived.length} cierre{archived.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                {archived.map((summary) => (
+                  <ArchivedDayCard
+                    key={summary.date}
+                    summary={summary}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </Layout>
   );

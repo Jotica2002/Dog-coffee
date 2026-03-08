@@ -10,12 +10,14 @@ function StatCard({
   title,
   icon: Icon,
   amountUsd,
+  amountVesExact,
   exchangeRate,
   variant = "default",
 }: {
   title: string;
   icon: React.ElementType;
   amountUsd: number;
+  amountVesExact?: number;
   exchangeRate: number;
   variant?: "default" | "accent" | "muted";
 }) {
@@ -41,6 +43,7 @@ function StatCard({
       </div>
       <CurrencyDisplay
         amountUsd={amountUsd}
+        amountVesExact={amountVesExact}
         exchangeRate={exchangeRate}
         size="lg"
       />
@@ -61,13 +64,12 @@ function RecentTransaction({
   return (
     <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
       <div
-        className={`p-2 rounded-full ${
-          isExpense
-            ? "bg-destructive/10 text-destructive"
-            : isDeudor
+        className={`p-2 rounded-full ${isExpense
+          ? "bg-destructive/10 text-destructive"
+          : isDeudor
             ? "bg-accent/50 text-accent-foreground"
             : "bg-primary/10 text-primary"
-        }`}
+          }`}
       >
         {isExpense ? (
           <ArrowDownCircle className="w-4 h-4" />
@@ -85,7 +87,7 @@ function RecentTransaction({
       </div>
       <CurrencyDisplay
         amountUsd={Math.abs(transaction.amount_usd)}
-        exchangeRate={exchangeRate}
+        exchangeRate={transaction.exchange_rate || exchangeRate}
         size="sm"
         className={isExpense ? "text-destructive" : "text-foreground"}
       />
@@ -128,6 +130,7 @@ export default function Dashboard() {
             title="Caja Actual"
             icon={Wallet}
             amountUsd={stats?.cajaActual || 0}
+            amountVesExact={stats?.cajaActualVes || 0}
             exchangeRate={exchangeRate}
             variant="default"
           />
@@ -136,6 +139,7 @@ export default function Dashboard() {
               title="Cuentas por Cobrar"
               icon={Users}
               amountUsd={stats?.cuentasPorCobrar || 0}
+              amountVesExact={stats?.cuentasPorCobrarVes || 0}
               exchangeRate={exchangeRate}
               variant="accent"
             />
@@ -143,6 +147,7 @@ export default function Dashboard() {
               title="Ventas Hoy"
               icon={TrendingUp}
               amountUsd={stats?.ventasHoy || 0}
+              amountVesExact={stats?.ventasHoyVes || 0}
               exchangeRate={exchangeRate}
               variant="muted"
             />
