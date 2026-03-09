@@ -88,6 +88,7 @@ export default function Registro() {
           description: description.trim() || "Venta de mostrador", // La DB requiere que no esté vacío
           amount_usd: parseFloat(amountUsd),
           exchange_rate: exchangeRate,
+          original_amount_bs: parseFloat(amountVes),
           status: status,
           debt_type: showClientNameField ? debtType : null,
           client_name: showClientNameField ? clientName.trim() : null,

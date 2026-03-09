@@ -33,6 +33,8 @@ export function useDashboardStats() {
       // Variables con los nombres EXACTOS que pide el types.ts
       let cajaActual = 0;
       let cajaActualVes = 0;
+      let dineroReal = 0;
+      let dineroRealVes = 0;
       let cuentasPorCobrar = 0;
       let cuentasPorCobrarVes = 0;
       let cuentasPorPagar = 0;
@@ -45,19 +47,30 @@ export function useDashboardStats() {
       transactions.forEach((tx) => {
         const amount = Number(tx.amount_usd) || 0;
         const txRate = tx.exchange_rate || exchangeRate;
-        const amountVes = amount * txRate;
+        const amountVes = tx.original_amount_bs !== null && tx.original_amount_bs !== undefined
+          ? Number(tx.original_amount_bs)
+          : (amount * txRate);
 
         // Extraemos solo la fecha de created_at para comparar
         const txDate = tx.created_at ? tx.created_at.split('T')[0] : '';
         const isToday = txDate === today;
 
-        // Lógica de la caja
+        // Lógica de la caja (Legacy para no romper otras métricas si las hay)
         if (tx.transaction_type === 'Venta' && tx.status === 'Pagado') {
           cajaActualVes += amountVes;
         } else if (tx.transaction_type === 'Inyección de Capital') {
           cajaActualVes += amountVes;
         } else if (tx.transaction_type === 'Gasto') {
           cajaActualVes -= amountVes;
+        }
+
+        // Lógica de Dinero Real en Caja (Estricto 'Pagado')
+        if (tx.status === 'Pagado') {
+          if (tx.transaction_type === 'Venta' || tx.transaction_type === 'Inyección de Capital') {
+            dineroRealVes += amountVes;
+          } else if (tx.transaction_type === 'Gasto') {
+            dineroRealVes -= amountVes;
+          }
         }
 
         // Lógica de Deudores
@@ -78,11 +91,13 @@ export function useDashboardStats() {
 
       if (exchangeRate > 0) {
         cajaActual = cajaActualVes / exchangeRate;
+        dineroReal = dineroRealVes / exchangeRate;
         cuentasPorCobrar = cuentasPorCobrarVes / exchangeRate;
         cuentasPorPagar = cuentasPorPagarVes / exchangeRate;
         ventasHoy = ventasHoyVes / exchangeRate;
       } else {
         cajaActual = 0;
+        dineroReal = 0;
         cuentasPorCobrar = 0;
         cuentasPorPagar = 0;
         ventasHoy = 0;
@@ -92,6 +107,8 @@ export function useDashboardStats() {
       setStats({
         cajaActual,
         cajaActualVes,
+        dineroReal,
+        dineroRealVes,
         cuentasPorCobrar,
         cuentasPorCobrarVes,
         cuentasPorPagar,

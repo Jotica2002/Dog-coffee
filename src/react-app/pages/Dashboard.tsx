@@ -91,6 +91,7 @@ function RecentTransaction({
       </div>
       <CurrencyDisplay
         amountUsd={Math.abs(transaction.amount_usd)}
+        amountVesExact={Math.abs(transaction.original_amount_bs || 0) || undefined}
         exchangeRate={transaction.exchange_rate || exchangeRate}
         size="sm"
         className={isExpense ? "text-destructive" : "text-foreground"}
@@ -128,10 +129,32 @@ export default function Dashboard() {
           </span>
         </div>
 
+        {/* Balance Principal (Dinero Real) */}
+        <div className={`rounded-xl p-6 shadow-md border-2 ${stats && stats.dineroReal >= 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-destructive/10 border-destructive/30'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className={`text-lg font-bold ${stats && stats.dineroReal >= 0 ? 'text-green-700' : 'text-destructive'}`}>
+                Dinero Real en Caja
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">Efectivo 100% disponible</p>
+            </div>
+            <div className={`p-4 rounded-full ${stats && stats.dineroReal >= 0 ? 'bg-green-500/20 text-green-700' : 'bg-destructive/20 text-destructive'}`}>
+              <Wallet className="w-8 h-8" />
+            </div>
+          </div>
+          <CurrencyDisplay
+            amountUsd={stats?.dineroReal || 0}
+            amountVesExact={stats?.dineroRealVes || 0}
+            exchangeRate={exchangeRate}
+            size="lg"
+            className={`${stats && stats.dineroReal >= 0 ? 'text-green-700' : 'text-destructive'} text-3xl md:text-4xl`}
+          />
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-3">
           <StatCard
-            title="Caja Actual"
+            title="Balance Total Histórico (Info)"
             icon={Wallet}
             amountUsd={stats?.cajaActual || 0}
             amountVesExact={stats?.cajaActualVes || 0}

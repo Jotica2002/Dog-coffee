@@ -16,6 +16,7 @@ export interface Transaction {
   description: string | null;
   amount_usd: number;
   exchange_rate: number;
+  original_amount_bs: number | null;
   status: TransactionStatus | null;
   client_name: string | null;
   payment_method: string | null;
@@ -27,6 +28,8 @@ export interface Transaction {
 export interface DashboardStats {
   cajaActual: number;
   cajaActualVes: number;
+  dineroReal: number;
+  dineroRealVes: number;
   cuentasPorCobrar: number;
   cuentasPorCobrarVes: number;
   cuentasPorPagar: number;

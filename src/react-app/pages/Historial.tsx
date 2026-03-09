@@ -61,6 +61,7 @@ function TransactionCard({
             </div>
             <CurrencyDisplay
               amountUsd={Math.abs(transaction.amount_usd)}
+              amountVesExact={Math.abs(transaction.original_amount_bs || 0) || undefined}
               exchangeRate={transaction.exchange_rate || exchangeRate}
               size="sm"
               className={isExpense ? "text-destructive font-bold" : "text-foreground font-bold"}
