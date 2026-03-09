@@ -5,7 +5,7 @@ import { Button } from "@/react-app/components/ui/button";
 import { Input } from "@/react-app/components/ui/input";
 import { Label } from "@/react-app/components/ui/label";
 import { useSettings } from "@/react-app/hooks/useSettings";
-import { DollarSign, Loader2, Save, TrendingUp, LogOut } from "lucide-react";
+import { DollarSign, Loader2, Save, TrendingUp, LogOut, Lock } from "lucide-react";
 import { supabase } from "@/react-app/supabase";
 import { useNavigate } from "react-router";
 
@@ -19,6 +19,41 @@ export default function Configuracion() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
+  };
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Las contraseñas no coinciden");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordMessage("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    setSavingPassword(true);
+    setPasswordMessage("");
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      setPasswordMessage("Error: " + error.message);
+    } else {
+      setPasswordMessage("Contraseña actualizada exitosamente");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setPasswordMessage(""), 3000);
+    }
+
+    setSavingPassword(false);
   };
 
   const currentRate = settings?.current_exchange_rate_ves || 0;
@@ -151,6 +186,77 @@ export default function Configuracion() {
             Todas las transacciones se guardan en USD y se convierten a VES
             usando esta tasa.
           </p>
+        </div>
+
+        {/* Security Section (Change Password) */}
+        <div className="mt-8 bg-card rounded-xl p-6 shadow-sm border border-border">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-full bg-primary/10">
+              <Lock className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">
+                Seguridad de la Cuenta
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Cambia tu contraseña de acceso
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Nueva Contraseña</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                disabled={savingPassword}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="Repite la nueva contraseña"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={savingPassword}
+              />
+            </div>
+
+            {passwordMessage && (
+              <div
+                className={`p-3 rounded-lg text-sm ${passwordMessage.includes("Error") || passwordMessage.includes("no coinciden") || passwordMessage.includes("caracteres")
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-green-100 text-green-700"
+                  }`}
+              >
+                {passwordMessage}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={savingPassword || !newPassword || !confirmPassword}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {savingPassword ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Actualizando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Actualizar Contraseña
+                </>
+              )}
+            </Button>
+          </form>
         </div>
         {/* Close Register and Logout Section */}
         <div className="mt-8 pt-6 border-t border-border space-y-4">
