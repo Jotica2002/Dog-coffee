@@ -19,22 +19,26 @@ function StatCard({
   amountUsd: number;
   amountVesExact?: number;
   exchangeRate: number;
-  variant?: "default" | "accent" | "muted";
+  variant?: "default" | "accent" | "muted" | "receivable" | "payable";
 }) {
   const bgClasses = {
-    default: "bg-card",
-    accent: "bg-accent/30",
-    muted: "bg-muted",
+    default: "bg-card border-border",
+    accent: "bg-accent/30 border-accent",
+    muted: "bg-muted border-border",
+    receivable: "bg-blue-500/10 border-blue-500/20",
+    payable: "bg-destructive/10 border-destructive/20",
   };
 
   const iconClasses = {
     default: "text-primary bg-primary/10",
     accent: "text-accent-foreground bg-accent/50",
     muted: "text-muted-foreground bg-muted-foreground/10",
+    receivable: "text-blue-600 bg-blue-500/20",
+    payable: "text-destructive bg-destructive/20",
   };
 
   return (
-    <div className={`${bgClasses[variant]} rounded-xl p-4 shadow-sm border border-border`}>
+    <div className={`${bgClasses[variant]} rounded-xl p-4 shadow-sm border`}>
       <div className="flex items-start justify-between mb-3">
         <span className="text-sm font-medium text-muted-foreground">{title}</span>
         <div className={`p-2 rounded-lg ${iconClasses[variant]}`}>
@@ -136,22 +140,30 @@ export default function Dashboard() {
           />
           <div className="grid grid-cols-2 gap-3">
             <StatCard
-              title="Cuentas por Cobrar"
+              title="Total por Cobrar"
               icon={Users}
               amountUsd={stats?.cuentasPorCobrar || 0}
               amountVesExact={stats?.cuentasPorCobrarVes || 0}
               exchangeRate={exchangeRate}
-              variant="accent"
+              variant="receivable"
             />
             <StatCard
-              title="Ventas Hoy"
-              icon={TrendingUp}
-              amountUsd={stats?.ventasHoy || 0}
-              amountVesExact={stats?.ventasHoyVes || 0}
+              title="Total por Pagar"
+              icon={Users}
+              amountUsd={stats?.cuentasPorPagar || 0}
+              amountVesExact={stats?.cuentasPorPagarVes || 0}
               exchangeRate={exchangeRate}
-              variant="muted"
+              variant="payable"
             />
           </div>
+          <StatCard
+            title="Ventas Hoy"
+            icon={TrendingUp}
+            amountUsd={stats?.ventasHoy || 0}
+            amountVesExact={stats?.ventasHoyVes || 0}
+            exchangeRate={exchangeRate}
+            variant="muted"
+          />
         </div>
 
         {/* Recent Transactions */}

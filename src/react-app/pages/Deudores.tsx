@@ -5,9 +5,10 @@ import CurrencyDisplay from "@/react-app/components/CurrencyDisplay";
 import { Button } from "@/react-app/components/ui/button";
 import { useDashboardStats } from "@/react-app/hooks/useDashboardStats";
 import { useDebtors } from "@/react-app/hooks/useDebtors";
-import { Users, CheckCircle2, Loader2 } from "lucide-react";
+import { Users, CheckCircle2, Loader2, Building2 } from "lucide-react";
 import type { Transaction } from "@/shared/types";
 import { supabase } from "@/react-app/supabase"; // ¡Importante!
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/react-app/components/ui/tabs";
 
 function DebtorCard({
   transaction,
@@ -27,10 +28,14 @@ function DebtorCard({
   });
 
   return (
-    <div className="bg-accent/30 rounded-lg p-4 shadow-sm border-2 border-accent">
+    <div className={`rounded-lg p-4 shadow-sm border-2 ${transaction.debt_type === 'Por Pagar' ? 'bg-destructive/5 border-destructive/20' : 'bg-blue-500/5 border-blue-500/20'}`}>
       <div className="flex items-start gap-3 mb-3">
-        <div className="p-2 rounded-full bg-accent">
-          <Users className="w-5 h-5 text-accent-foreground" />
+        <div className={`p-2 rounded-full ${transaction.debt_type === 'Por Pagar' ? 'bg-destructive/20' : 'bg-blue-500/20'}`}>
+          {transaction.debt_type === 'Por Pagar' ? (
+            <Building2 className="w-5 h-5 text-destructive" />
+          ) : (
+            <Users className="w-5 h-5 text-blue-600" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-base font-bold text-foreground">
@@ -55,7 +60,8 @@ function DebtorCard({
       <Button
         onClick={() => onMarkAsPaid(transaction.id)}
         disabled={isProcessing}
-        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+        variant={transaction.debt_type === 'Por Pagar' ? "destructive" : "default"}
+        className={`w-full font-semibold ${transaction.debt_type !== 'Por Pagar' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
       >
         {isProcessing ? (
           <>
@@ -79,25 +85,26 @@ export default function Deudores() {
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   const exchangeRate = stats?.exchangeRate || 0;
-  const totalDebt = debtors.reduce((sum, d) => sum + d.amount_usd, 0);
+  const accountsReceivable = debtors.filter(d => d.debt_type !== 'Por Pagar');
+  const accountsPayable = debtors.filter(d => d.debt_type === 'Por Pagar');
+
+  const totalReceivable = accountsReceivable.reduce((sum, d) => sum + d.amount_usd, 0);
+  const totalPayable = accountsPayable.reduce((sum, d) => sum + d.amount_usd, 0);
 
   const handleMarkAsPaid = async (id: string) => {
     setProcessingId(id);
     try {
-      // ¡Aquí está la magia de Supabase!
       const { error } = await supabase
         .from("transactions")
+        // No cambiamos el debt_type, así se refleja correctamente en el historial si fue por pagar o por cobrar.
         .update({ status: "Pagado", exchange_rate: exchangeRate })
         .eq("id", id);
 
       if (error) throw error;
 
       await refetch();
-      // Si activaste el tiempo real que hablamos antes, los stats se actualizan solos
-      // Si no, puedes dejar este reload momentáneamente:
-      // window.location.reload(); 
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Error al cobrar");
+      alert(error instanceof Error ? error.message : "Error al procesar deuda");
     } finally {
       setProcessingId(null);
     }
@@ -105,42 +112,90 @@ export default function Deudores() {
 
   return (
     <Layout>
-      <Header title="Deudores" subtitle="Cuentas por cobrar" />
+      <Header title="Deudores" subtitle="Gestión de Cuentas" />
       <main className="px-4 py-6">
-        <div className="bg-accent rounded-xl p-4 shadow-sm border border-accent mb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-accent-foreground/80 mb-1">Total por Cobrar</p>
-              <CurrencyDisplay
-                amountUsd={totalDebt}
-                exchangeRate={exchangeRate}
-                size="lg"
-                className="text-accent-foreground font-bold"
-              />
-            </div>
-            <div className="p-3 rounded-full bg-accent-foreground/10">
-              <Users className="w-6 h-6 text-accent-foreground" />
-            </div>
-          </div>
-        </div>
+        <Tabs defaultValue="cobrar" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="cobrar">Por Cobrar (Clientes)</TabsTrigger>
+            <TabsTrigger value="pagar">Por Pagar (Proveedores)</TabsTrigger>
+          </TabsList>
 
-        {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="animate-spin" /></div>
-        ) : debtors.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">No hay cuentas por cobrar</div>
-        ) : (
-          <div className="space-y-3">
-            {debtors.map((debtor) => (
-              <DebtorCard
-                key={debtor.id}
-                transaction={debtor}
-                exchangeRate={exchangeRate}
-                onMarkAsPaid={handleMarkAsPaid}
-                isProcessing={processingId === debtor.id}
-              />
-            ))}
-          </div>
-        )}
+          {/* Por Cobrar Tab */}
+          <TabsContent value="cobrar">
+            <div className="bg-blue-500/10 rounded-xl p-4 shadow-sm border border-blue-500/20 mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-blue-700 mb-1">Total a Nuestro Favor</p>
+                  <CurrencyDisplay
+                    amountUsd={totalReceivable}
+                    exchangeRate={exchangeRate}
+                    size="lg"
+                    className="text-blue-700 font-bold"
+                  />
+                </div>
+                <div className="p-3 rounded-full bg-blue-500/20">
+                  <Users className="w-6 h-6 text-blue-700" />
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" /></div>
+            ) : accountsReceivable.length === 0 ? (
+              <div className="text-center py-20 text-muted-foreground">No hay cuentas por cobrar</div>
+            ) : (
+              <div className="space-y-3">
+                {accountsReceivable.map((debtor) => (
+                  <DebtorCard
+                    key={debtor.id}
+                    transaction={debtor}
+                    exchangeRate={exchangeRate}
+                    onMarkAsPaid={handleMarkAsPaid}
+                    isProcessing={processingId === debtor.id}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Por Pagar Tab */}
+          <TabsContent value="pagar">
+            <div className="bg-destructive/10 rounded-xl p-4 shadow-sm border border-destructive/20 mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-destructive mb-1">Total a Debemos</p>
+                  <CurrencyDisplay
+                    amountUsd={totalPayable}
+                    exchangeRate={exchangeRate}
+                    size="lg"
+                    className="text-destructive font-bold"
+                  />
+                </div>
+                <div className="p-3 rounded-full bg-destructive/20">
+                  <Building2 className="w-6 h-6 text-destructive" />
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-destructive" /></div>
+            ) : accountsPayable.length === 0 ? (
+              <div className="text-center py-20 text-muted-foreground">No hay cuentas por pagar</div>
+            ) : (
+              <div className="space-y-3">
+                {accountsPayable.map((debtor) => (
+                  <DebtorCard
+                    key={debtor.id}
+                    transaction={debtor}
+                    exchangeRate={exchangeRate}
+                    onMarkAsPaid={handleMarkAsPaid}
+                    isProcessing={processingId === debtor.id}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </Layout>
   );

@@ -15,7 +15,7 @@ import {
 } from "@/react-app/components/ui/select";
 import { CheckCircle2, Loader2, ArrowRightLeft } from "lucide-react";
 import { useDashboardStats } from "@/react-app/hooks/useDashboardStats";
-import type { TransactionType, TransactionStatus } from "@/shared/types";
+import type { TransactionType, TransactionStatus, DebtType } from "@/shared/types";
 import { supabase } from "@/react-app/supabase"; // ¡Aquí importamos nuestra conexión real!
 
 export default function Registro() {
@@ -32,6 +32,7 @@ export default function Registro() {
   const [amountUsd, setAmountUsd] = useState("");
   const [amountVes, setAmountVes] = useState("");
   const [status, setStatus] = useState<TransactionStatus | "">("");
+  const [debtType, setDebtType] = useState<DebtType>("Por Cobrar");
   const [clientName, setClientName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
 
@@ -65,7 +66,7 @@ export default function Registro() {
     }
 
     if (showClientNameField && !clientName.trim()) {
-      alert("Por favor ingresa el nombre del cliente para deudas");
+      alert("Por favor ingresa el nombre para esta deuda");
       return;
     }
 
@@ -88,6 +89,7 @@ export default function Registro() {
           amount_usd: parseFloat(amountUsd),
           exchange_rate: exchangeRate,
           status: status,
+          debt_type: showClientNameField ? debtType : null,
           client_name: showClientNameField ? clientName.trim() : null,
           payment_method: paymentMethod.trim() || null,
         }]);
@@ -193,21 +195,47 @@ export default function Registro() {
               </Select>
             </div>
 
-            {/* Client Name - Only for Deudor */}
+            {/* Client/Supplier Name and Debt Type - Only for Deudor */}
             {showClientNameField && (
-              <div className="space-y-2">
-                <Label htmlFor="clientName" className="text-sm font-medium">
-                  Nombre del Deudor <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="clientName"
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Ej: Juan Pérez"
-                  required
-                  className="w-full"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2 border-l-4 border-primary pl-4 py-2 bg-muted/20 rounded-r-lg">
+                  <Label className="text-sm font-bold text-primary">
+                    Tipo de Deuda
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <Button
+                      type="button"
+                      variant={debtType === "Por Cobrar" ? "default" : "outline"}
+                      onClick={() => setDebtType("Por Cobrar")}
+                      className={`w-full ${debtType === "Por Cobrar" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+                    >
+                      Cliente debe (Cobrar)
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={debtType === "Por Pagar" ? "default" : "outline"}
+                      onClick={() => setDebtType("Por Pagar")}
+                      className={`w-full ${debtType === "Por Pagar" ? "bg-red-600 hover:bg-red-700 text-white border-red-600" : ""}`}
+                    >
+                      A Proveedor (Pagar)
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clientName" className="text-sm font-medium">
+                    Nombre del {debtType === "Por Cobrar" ? "Cliente" : "Proveedor"} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="clientName"
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder={debtType === "Por Cobrar" ? "Ej: Juan Pérez" : "Ej: Distribuidora Café"}
+                    required
+                    className="w-full"
+                  />
+                </div>
               </div>
             )}
 

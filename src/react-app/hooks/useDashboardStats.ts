@@ -35,6 +35,8 @@ export function useDashboardStats() {
       let cajaActualVes = 0;
       let cuentasPorCobrar = 0;
       let cuentasPorCobrarVes = 0;
+      let cuentasPorPagar = 0;
+      let cuentasPorPagarVes = 0;
       let ventasHoy = 0;
       let ventasHoyVes = 0;
 
@@ -60,7 +62,12 @@ export function useDashboardStats() {
 
         // Lógica de Deudores
         if (tx.status === 'Deudor') {
-          cuentasPorCobrarVes += amountVes;
+          if (tx.debt_type === 'Por Pagar') {
+            cuentasPorPagarVes += amountVes;
+          } else {
+            // Por defecto, o si es 'Por Cobrar', sumamos a cuentas por cobrar
+            cuentasPorCobrarVes += amountVes;
+          }
         }
 
         // Lógica de Ventas del día
@@ -72,10 +79,12 @@ export function useDashboardStats() {
       if (exchangeRate > 0) {
         cajaActual = cajaActualVes / exchangeRate;
         cuentasPorCobrar = cuentasPorCobrarVes / exchangeRate;
+        cuentasPorPagar = cuentasPorPagarVes / exchangeRate;
         ventasHoy = ventasHoyVes / exchangeRate;
       } else {
         cajaActual = 0;
         cuentasPorCobrar = 0;
+        cuentasPorPagar = 0;
         ventasHoy = 0;
       }
 
@@ -85,6 +94,8 @@ export function useDashboardStats() {
         cajaActualVes,
         cuentasPorCobrar,
         cuentasPorCobrarVes,
+        cuentasPorPagar,
+        cuentasPorPagarVes,
         ventasHoy,
         ventasHoyVes,
         exchangeRate
