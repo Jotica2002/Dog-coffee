@@ -1,5 +1,5 @@
 export type TransactionType = "Venta" | "Gasto" | "Inyección de Capital";
-export type TransactionStatus = "Pagado" | "Deudor" | "Personal" | "Archivado";
+export type TransactionStatus = "Pagado" | "Deudor" | "Personal" | "Personal (Caja)" | "Archivado";
 export type DebtType = "Por Cobrar" | "Por Pagar";
 
 export interface SystemSettings {

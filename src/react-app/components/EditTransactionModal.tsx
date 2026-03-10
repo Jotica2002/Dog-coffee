@@ -180,7 +180,10 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
                             <SelectContent>
                                 <SelectItem value="Pagado">Pagado</SelectItem>
                                 <SelectItem value="Deudor">Deudor</SelectItem>
-                                <SelectItem value="Personal">Personal</SelectItem>
+                                <SelectItem value="Personal">Personal (No afecta caja)</SelectItem>
+                                {transactionType === "Gasto" && (
+                                    <SelectItem value="Personal (Caja)">Personal (Pagado con Caja real)</SelectItem>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>

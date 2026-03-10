@@ -64,8 +64,8 @@ export function useDashboardStats() {
           cajaActualVes -= amountVes;
         }
 
-        // Lógica de Dinero Real en Caja (Estricto 'Pagado')
-        if (tx.status === 'Pagado') {
+        // Lógica de Dinero Real en Caja (Estricto 'Pagado' o 'Personal (Caja)')
+        if (tx.status === 'Pagado' || tx.status === 'Personal (Caja)') {
           if (tx.transaction_type === 'Venta' || tx.transaction_type === 'Inyección de Capital') {
             dineroRealVes += amountVes;
           } else if (tx.transaction_type === 'Gasto') {

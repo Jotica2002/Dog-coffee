@@ -159,6 +159,8 @@ export default function Historial() {
   const { transactions, loading, refetch } = useTransactions();
   const { archived, loading: archivedLoading } = useArchivedTransactions();
 
+  const exchangeRate = stats?.exchangeRate || 0;
+
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [actionType, setActionType] = useState<"edit" | "delete" | null>(null);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -169,16 +171,10 @@ export default function Historial() {
   const [activeFilter, setActiveFilter] = useState<"todo" | "efectivo">("todo");
 
   const displayedTransactions = activeFilter === "efectivo"
-    ? transactions.filter(tx => tx.status === "Pagado")
+    ? transactions.filter(tx => tx.status === "Pagado" || tx.status === "Personal (Caja)")
     : transactions;
 
   // Totalizador dinámico
-  const totalUsd = displayedTransactions.reduce((acc, tx) => {
-    const isExpense = tx.transaction_type === "Gasto";
-    const amount = Math.abs(tx.amount_usd);
-    return isExpense ? acc - amount : acc + amount;
-  }, 0);
-
   const totalVes = displayedTransactions.reduce((acc, tx) => {
     const isExpense = tx.transaction_type === "Gasto";
     const amount = tx.original_amount_bs !== null && tx.original_amount_bs !== undefined
@@ -187,6 +183,9 @@ export default function Historial() {
 
     return isExpense ? acc - amount : acc + amount;
   }, 0);
+
+  // Clave para evitar discrepancia de centavos: calculamos a partir de los VES igual que en el Dashboard
+  const totalUsd = exchangeRate > 0 ? (totalVes / exchangeRate) : 0;
 
   const handleActionClick = (tx: Transaction, action: "edit" | "delete") => {
     setSelectedTx(tx);
@@ -231,8 +230,6 @@ export default function Historial() {
       setIsAuthenticating(false);
     }
   };
-
-  const exchangeRate = stats?.exchangeRate || 0;
 
   return (
     <Layout>
