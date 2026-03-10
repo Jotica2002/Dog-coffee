@@ -75,7 +75,8 @@ function TransactionCard({
               amountVesExact={Math.abs(transaction.original_amount_bs || 0) || undefined}
               exchangeRate={transaction.exchange_rate || exchangeRate}
               size="sm"
-              className={isExpense ? "text-destructive font-bold" : "text-foreground font-bold"}
+              prefix={isExpense ? "- " : "+ "}
+              className={isExpense ? "text-destructive font-bold" : "text-green-600 font-bold"}
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -165,6 +166,27 @@ export default function Historial() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<"todo" | "efectivo">("todo");
+
+  const displayedTransactions = activeFilter === "efectivo"
+    ? transactions.filter(tx => tx.status === "Pagado")
+    : transactions;
+
+  // Totalizador dinámico
+  const totalUsd = displayedTransactions.reduce((acc, tx) => {
+    const isExpense = tx.transaction_type === "Gasto";
+    const amount = Math.abs(tx.amount_usd);
+    return isExpense ? acc - amount : acc + amount;
+  }, 0);
+
+  const totalVes = displayedTransactions.reduce((acc, tx) => {
+    const isExpense = tx.transaction_type === "Gasto";
+    const amount = tx.original_amount_bs !== null && tx.original_amount_bs !== undefined
+      ? Math.abs(tx.original_amount_bs)
+      : Math.abs(tx.amount_usd) * (tx.exchange_rate || exchangeRate);
+
+    return isExpense ? acc - amount : acc + amount;
+  }, 0);
 
   const handleActionClick = (tx: Transaction, action: "edit" | "delete") => {
     setSelectedTx(tx);
@@ -223,6 +245,49 @@ export default function Historial() {
           </TabsList>
 
           <TabsContent value="activas">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex bg-muted p-1 rounded-lg self-start">
+                <button
+                  onClick={() => setActiveFilter("todo")}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeFilter === "todo" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Todo el Historial
+                </button>
+                <button
+                  onClick={() => setActiveFilter("efectivo")}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeFilter === "efectivo" ? "bg-background shadow text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Solo Efectivo
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {activeFilter === "efectivo"
+                  ? `Mostrando ${displayedTransactions.length} movimientos que afectan tu saldo real`
+                  : `${displayedTransactions.length} transacción${displayedTransactions.length !== 1 ? "es" : ""}`
+                }
+              </p>
+            </div>
+
+            {/* Totalizador */}
+            {activeFilter === "efectivo" && displayedTransactions.length > 0 && (
+              <div className={`mb-4 rounded-xl p-4 shadow-sm border-2 ${totalUsd >= 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-destructive/10 border-destructive/20'}`}>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className={`text-sm font-bold ${totalUsd >= 0 ? 'text-green-700' : 'text-destructive'}`}>Suma de este Historial</h3>
+                    <p className="text-xs text-muted-foreground">Balance neto mostrado</p>
+                  </div>
+                  <CurrencyDisplay
+                    amountUsd={Math.abs(totalUsd)}
+                    amountVesExact={Math.abs(totalVes)}
+                    exchangeRate={exchangeRate}
+                    prefix={totalUsd < 0 ? "- " : "+ "}
+                    size="lg"
+                    className={`${totalUsd >= 0 ? 'text-green-700' : 'text-destructive'} text-right`}
+                  />
+                </div>
+              </div>
+            )}
+
             {loading ? (
               <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[300px]">
                 <Receipt className="w-12 h-12 text-muted-foreground mb-4 animate-pulse" />
@@ -240,14 +305,16 @@ export default function Historial() {
                   Agrega tu primera transacción desde el Registro
                 </p>
               </div>
+            ) : displayedTransactions.length === 0 ? (
+              <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[200px]">
+                <Wallet className="w-12 h-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground text-center">
+                  No hay transacciones en efectivo
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">
-                    {transactions.length} transacción{transactions.length !== 1 ? "es" : ""}
-                  </p>
-                </div>
-                {transactions.map((transaction) => (
+                {displayedTransactions.map((transaction) => (
                   <TransactionCard
                     key={transaction.id}
                     transaction={transaction}

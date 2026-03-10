@@ -5,6 +5,7 @@ interface CurrencyDisplayProps {
   showVes?: boolean;
   className?: string;
   size?: "sm" | "md" | "lg";
+  prefix?: string;
 }
 
 export default function CurrencyDisplay({
@@ -14,6 +15,7 @@ export default function CurrencyDisplay({
   showVes = true,
   className = "",
   size = "md",
+  prefix = "",
 }: CurrencyDisplayProps) {
   const amountVes = amountVesExact !== undefined ? amountVesExact : amountUsd * exchangeRate;
 
@@ -40,11 +42,11 @@ export default function CurrencyDisplay({
   return (
     <div className={`${className}`}>
       <div className={`${sizeClasses[size]} text-foreground`}>
-        {formatUsd(amountUsd)}
+        {prefix}{formatUsd(amountUsd)}
       </div>
       {showVes && (
         <div className="text-xs text-muted-foreground mt-0.5">
-          {formatVes(amountVes)}
+          {prefix}{formatVes(amountVes)}
         </div>
       )}
     </div>
