@@ -180,7 +180,7 @@ export default function Dashboard() {
             />
           </div>
           <StatCard
-            title="Ventas Hoy"
+            title="Ventas de Hoy"
             icon={TrendingUp}
             amountUsd={stats?.ventasHoy || 0}
             amountVesExact={stats?.ventasHoyVes || 0}

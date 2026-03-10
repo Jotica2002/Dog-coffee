@@ -42,7 +42,17 @@ export function useDashboardStats() {
       let ventasHoy = 0;
       let ventasHoyVes = 0;
 
-      const today = new Date().toISOString().split('T')[0];
+      // Para el Dashboard, la fecha local importa (Caracas típicamente GMT-4).
+      // Usamos Intl.DateTimeFormat para forzar la zona horaria de Venezuela,
+      // evitando discrepancias si el dispositivo del usuario tiene otra hora.
+      const formatter = new Intl.DateTimeFormat('en-CA', { // 'en-CA' da formato YYYY-MM-DD
+        timeZone: 'America/Caracas',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+
+      const todayStr = formatter.format(new Date());
 
       transactions.forEach((tx) => {
         const amount = Number(tx.amount_usd) || 0;
@@ -51,9 +61,13 @@ export function useDashboardStats() {
           ? Number(tx.original_amount_bs)
           : (amount * txRate);
 
-        // Extraemos solo la fecha de created_at para comparar
-        const txDate = tx.created_at ? tx.created_at.split('T')[0] : '';
-        const isToday = txDate === today;
+        // Convertimos UTC created_at a la zona horaria local de Caracas para compararlo
+        let isToday = false;
+        if (tx.created_at) {
+          const txDateObj = new Date(tx.created_at);
+          const txDateStr = formatter.format(txDateObj);
+          isToday = (txDateStr === todayStr);
+        }
 
         // Lógica de la caja (Legacy para no romper otras métricas si las hay)
         if (tx.transaction_type === 'Venta' && tx.status === 'Pagado') {
@@ -83,7 +97,7 @@ export function useDashboardStats() {
           }
         }
 
-        // Lógica de Ventas del día
+        // Lógica de Ventas del día (Solo sumamos Ventas reales, ni Inyecciones ni Gastos)
         if (tx.transaction_type === 'Venta' && isToday) {
           ventasHoyVes += amountVes;
         }
