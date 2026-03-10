@@ -39,6 +39,21 @@ export function useTransactions(limit?: number) {
 
   useEffect(() => {
     fetchTransactions();
+
+    const channel = supabase
+      .channel('transactions-list-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        () => {
+          fetchTransactions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchTransactions]);
 
   // Ahora el refetch actualiza los datos suavemente sin recargar la página entera

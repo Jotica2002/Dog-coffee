@@ -83,6 +83,21 @@ export function useArchivedTransactions() {
 
     useEffect(() => {
         fetchArchived();
+
+        const channel = supabase
+            .channel('archived-list-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'transactions' },
+                () => {
+                    fetchArchived();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [fetchArchived]);
 
     return { archived, loading, refetch: fetchArchived };

@@ -1,19 +1,30 @@
+import { useState } from "react";
 import Header from "@/react-app/components/Header";
 import Layout from "@/react-app/components/Layout";
 import CurrencyDisplay from "@/react-app/components/CurrencyDisplay";
 import { useDashboardStats } from "@/react-app/hooks/useDashboardStats";
 import { useTransactions } from "@/react-app/hooks/useTransactions";
-import { ArrowUpCircle, ArrowDownCircle, Wallet, Receipt, Archive } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Wallet, Receipt, Archive, Pencil, Trash2, Loader2, Lock } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/react-app/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/react-app/components/ui/dialog";
+import { Button } from "@/react-app/components/ui/button";
+import { Input } from "@/react-app/components/ui/input";
+import { Label } from "@/react-app/components/ui/label";
+import { EditTransactionModal } from "@/react-app/components/EditTransactionModal";
+import { supabase } from "@/react-app/supabase";
 import { useArchivedTransactions, type ArchivedSummary } from "@/react-app/hooks/useArchivedTransactions";
 import type { Transaction } from "@/shared/types";
 
 function TransactionCard({
   transaction,
   exchangeRate,
+  onEdit,
+  onDelete,
 }: {
   transaction: Transaction;
   exchangeRate: number;
+  onEdit: (tx: Transaction) => void;
+  onDelete: (tx: Transaction) => void;
 }) {
   const isExpense = transaction.transaction_type === "Gasto";
   const isInjection = transaction.transaction_type === "Inyección de Capital";
@@ -94,6 +105,14 @@ function TransactionCard({
               </span>
             )}
           </div>
+          <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
+            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => onEdit(transaction)}>
+              <Pencil className="w-4 h-4 mr-1" /> Editar
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(transaction)}>
+              <Trash2 className="w-4 h-4 mr-1" /> Eliminar
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -136,8 +155,60 @@ function ArchivedDayCard({ summary }: { summary: ArchivedSummary }) {
 
 export default function Historial() {
   const { stats } = useDashboardStats();
-  const { transactions, loading } = useTransactions();
+  const { transactions, loading, refetch } = useTransactions();
   const { archived, loading: archivedLoading } = useArchivedTransactions();
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [actionType, setActionType] = useState<"edit" | "delete" | null>(null);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [password, setPassword] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  const handleActionClick = (tx: Transaction, action: "edit" | "delete") => {
+    setSelectedTx(tx);
+    setActionType(action);
+    setPassword("");
+    setAuthModalOpen(true);
+  };
+
+  const confirmAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTx || !actionType) return;
+
+    setIsAuthenticating(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("No hay usuario autenticado");
+
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: password,
+      });
+
+      if (authError) throw new Error("Contraseña incorrecta");
+
+      if (actionType === "delete") {
+        const { error: deleteError } = await supabase
+          .from("transactions")
+          .delete()
+          .eq("id", selectedTx.id);
+
+        if (deleteError) throw deleteError;
+        alert("Transacción eliminada con éxito");
+        refetch();
+        setAuthModalOpen(false);
+      } else if (actionType === "edit") {
+        setAuthModalOpen(false);
+        setEditModalOpen(true);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error de validación");
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
 
   const exchangeRate = stats?.exchangeRate || 0;
 
@@ -181,6 +252,8 @@ export default function Historial() {
                     key={transaction.id}
                     transaction={transaction}
                     exchangeRate={exchangeRate}
+                    onEdit={(tx) => handleActionClick(tx, "edit")}
+                    onDelete={(tx) => handleActionClick(tx, "delete")}
                   />
                 ))}
               </div>
@@ -223,6 +296,59 @@ export default function Historial() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Password Authorization Modal */}
+      <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Acción</DialogTitle>
+            <DialogDescription>
+              Ingrese la contraseña del sistema para {actionType === "edit" ? "editar" : "eliminar"} este registro.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={confirmAction}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    placeholder="Contraseña de administrador"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAuthModalOpen(false)} disabled={isAuthenticating}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isAuthenticating || !password} variant={actionType === "delete" ? "destructive" : "default"}>
+                {isAuthenticating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                {actionType === "delete" ? "Eliminar" : "Continuar a Edición"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        transaction={selectedTx}
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onSuccess={() => {
+          setEditModalOpen(false);
+          refetch();
+        }}
+      />
     </Layout>
   );
 }

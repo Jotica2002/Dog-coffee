@@ -26,6 +26,21 @@ export function useDebtors() {
 
   useEffect(() => {
     fetchDebtors();
+
+    const channel = supabase
+      .channel('debtors-list-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        () => {
+          fetchDebtors();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchDebtors]);
 
   return { debtors, loading, refetch: fetchDebtors };

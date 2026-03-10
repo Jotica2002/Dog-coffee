@@ -128,6 +128,21 @@ export function useDashboardStats() {
 
   useEffect(() => {
     fetchStats();
+
+    const channel = supabase
+      .channel('dashboard-stats-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        () => {
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchStats]);
 
   return { stats, loading, error, refetch: fetchStats };

@@ -18,7 +18,7 @@ function DebtorCard({
 }: {
   transaction: Transaction;
   exchangeRate: number;
-  onMarkAsPaid: (id: string) => void; // Cambiado a string
+  onMarkAsPaid: (id: string, debtType: string | null) => void;
   isProcessing: boolean;
 }) {
   const date = new Date(transaction.created_at).toLocaleDateString("es-VE", {
@@ -58,7 +58,7 @@ function DebtorCard({
       </div>
 
       <Button
-        onClick={() => onMarkAsPaid(transaction.id)}
+        onClick={() => onMarkAsPaid(transaction.id, transaction.debt_type)}
         disabled={isProcessing}
         variant={transaction.debt_type === 'Por Pagar' ? "destructive" : "default"}
         className={`w-full font-semibold ${transaction.debt_type !== 'Por Pagar' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
@@ -91,12 +91,20 @@ export default function Deudores() {
   const totalReceivable = accountsReceivable.reduce((sum, d) => sum + d.amount_usd, 0);
   const totalPayable = accountsPayable.reduce((sum, d) => sum + d.amount_usd, 0);
 
-  const handleMarkAsPaid = async (id: string) => {
+  const handleMarkAsPaid = async (id: string, debtType: string | null) => {
+    const isPayable = debtType === 'Por Pagar';
+    const message = isPayable
+      ? "¿Estás seguro de liquidar esta deuda? Esta acción RESTARÁ el dinero de tu caja real (Dinero Real en Caja)."
+      : "¿Estás seguro de liquidar esta deuda? Esta acción SUMARÁ el dinero a tu caja real (Dinero Real en Caja). Asegúrate de tener el pago en mano.";
+
+    if (!window.confirm(message)) {
+      return;
+    }
+
     setProcessingId(id);
     try {
       const { error } = await supabase
         .from("transactions")
-        // No cambiamos el debt_type, así se refleja correctamente en el historial si fue por pagar o por cobrar.
         .update({ status: "Pagado", exchange_rate: exchangeRate })
         .eq("id", id);
 
