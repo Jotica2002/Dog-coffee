@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Header from "@/react-app/components/Header";
 import Layout from "@/react-app/components/Layout";
 import CurrencyDisplay from "@/react-app/components/CurrencyDisplay";
@@ -20,13 +20,17 @@ function TransactionCard({
   exchangeRate,
   onEdit,
   onDelete,
+  balanceUsd,
+  balanceVesExact,
 }: {
   transaction: Transaction;
   exchangeRate: number;
   onEdit: (tx: Transaction) => void;
   onDelete: (tx: Transaction) => void;
+  balanceUsd?: number;
+  balanceVesExact?: number;
 }) {
-  const isExpense = transaction.transaction_type === "Gasto";
+  const isExpense = transaction.transaction_type === "Gasto" || (transaction.transaction_type as string) === "Abono a Proveedor";
   const isInjection = transaction.transaction_type === "Inyección de Capital";
 
   const Icon = isExpense
@@ -70,14 +74,28 @@ function TransactionCard({
               </p>
               <p className="text-xs text-muted-foreground">{date}</p>
             </div>
-            <CurrencyDisplay
-              amountUsd={Math.abs(transaction.amount_usd)}
-              amountVesExact={Math.abs(transaction.original_amount_bs || 0) || undefined}
-              exchangeRate={transaction.exchange_rate || exchangeRate}
-              size="sm"
-              prefix={isExpense ? "- " : "+ "}
-              className={isExpense ? "text-destructive font-bold" : "text-green-600 font-bold"}
-            />
+            <div className="flex flex-col items-end gap-1">
+              <CurrencyDisplay
+                amountUsd={Math.abs(transaction.amount_usd)}
+                amountVesExact={Math.abs(transaction.original_amount_bs || 0) || undefined}
+                exchangeRate={transaction.exchange_rate || exchangeRate}
+                size="sm"
+                prefix={isExpense ? "- " : "+ "}
+                className={isExpense ? "text-destructive font-bold text-base" : "text-green-600 font-bold text-base"}
+              />
+              {balanceUsd !== undefined && balanceVesExact !== undefined && (
+                <div className="bg-muted/50 px-2 py-0.5 rounded-md border border-border flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Saldo</span>
+                  <CurrencyDisplay
+                    amountUsd={balanceUsd}
+                    amountVesExact={balanceVesExact}
+                    size="sm"
+                    className="text-foreground font-medium"
+                    showVes={true}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-2">
             <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground font-medium">
@@ -174,9 +192,45 @@ export default function Historial() {
     ? transactions.filter(tx => tx.status === "Pagado" || tx.status === "Personal (Caja)")
     : transactions;
 
+  // Calculamos los saldos progresivos si estamos en "efectivo"
+  const transactionsWithBalance = useMemo(() => {
+    if (activeFilter !== "efectivo") {
+      return displayedTransactions.map(tx => ({ ...tx, balanceVes: undefined, balanceUsd: undefined }));
+    }
+
+    let currentBalanceVes = 0;
+    // Invertimos temporalmente para procesar de más antigua a más reciente
+    const reversed = [...displayedTransactions].reverse();
+    
+    const enriched = reversed.map(tx => {
+      const txExchangeRate = tx.exchange_rate || exchangeRate;
+      const isExpense = tx.transaction_type === "Gasto" || (tx.transaction_type as string) === "Abono a Proveedor";
+      const amountVes = tx.original_amount_bs !== null && tx.original_amount_bs !== undefined
+        ? Math.abs(tx.original_amount_bs)
+        : Math.abs(tx.amount_usd) * txExchangeRate;
+        
+      if (isExpense) {
+        currentBalanceVes -= amountVes;
+      } else {
+        currentBalanceVes += amountVes;
+      }
+      
+      const balanceUsd = txExchangeRate > 0 ? currentBalanceVes / txExchangeRate : 0;
+      
+      return {
+        ...tx,
+        balanceVes: currentBalanceVes,
+        balanceUsd: balanceUsd,
+      };
+    });
+    
+    // Volvemos a invertir para mostrar las más recientes primero
+    return enriched.reverse();
+  }, [displayedTransactions, activeFilter, exchangeRate]);
+
   // Totalizador dinámico
   const totalVes = displayedTransactions.reduce((acc, tx) => {
-    const isExpense = tx.transaction_type === "Gasto";
+    const isExpense = tx.transaction_type === "Gasto" || (tx.transaction_type as string) === "Abono a Proveedor";
     const amount = tx.original_amount_bs !== null && tx.original_amount_bs !== undefined
       ? Math.abs(tx.original_amount_bs)
       : Math.abs(tx.amount_usd) * (tx.exchange_rate || exchangeRate);
@@ -311,13 +365,15 @@ export default function Historial() {
               </div>
             ) : (
               <div className="space-y-3">
-                {displayedTransactions.map((transaction) => (
+                {transactionsWithBalance.map((transaction) => (
                   <TransactionCard
                     key={transaction.id}
                     transaction={transaction}
                     exchangeRate={exchangeRate}
                     onEdit={(tx) => handleActionClick(tx, "edit")}
                     onDelete={(tx) => handleActionClick(tx, "delete")}
+                    balanceUsd={transaction.balanceUsd}
+                    balanceVesExact={transaction.balanceVes}
                   />
                 ))}
               </div>
