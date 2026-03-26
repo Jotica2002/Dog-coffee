@@ -192,12 +192,8 @@ export default function Historial() {
     ? transactions.filter(tx => tx.status === "Pagado" || tx.status === "Personal (Caja)")
     : transactions;
 
-  // Calculamos los saldos progresivos si estamos en "efectivo"
+  // Calculamos los saldos progresivos en ambas pestañas
   const transactionsWithBalance = useMemo(() => {
-    if (activeFilter !== "efectivo") {
-      return displayedTransactions.map(tx => ({ ...tx, balanceVes: undefined, balanceUsd: undefined }));
-    }
-
     let currentBalanceVes = 0;
     // Invertimos temporalmente para procesar de más antigua a más reciente
     const reversed = [...displayedTransactions].reverse();
@@ -320,12 +316,14 @@ export default function Historial() {
             </div>
 
             {/* Totalizador */}
-            {activeFilter === "efectivo" && displayedTransactions.length > 0 && (
+            {displayedTransactions.length > 0 && (
               <div className={`mb-4 rounded-xl p-4 shadow-sm border-2 ${totalUsd >= 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-destructive/10 border-destructive/20'}`}>
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className={`text-sm font-bold ${totalUsd >= 0 ? 'text-green-700' : 'text-destructive'}`}>Suma de este Historial</h3>
-                    <p className="text-xs text-muted-foreground">Balance neto mostrado</p>
+                    <h3 className={`text-sm font-bold ${totalUsd >= 0 ? 'text-green-700' : 'text-destructive'}`}>
+                      {activeFilter === "efectivo" ? "Efectivo Real" : "Balance Total"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Suma de este Historial</p>
                   </div>
                   <CurrencyDisplay
                     amountUsd={Math.abs(totalUsd)}
@@ -356,11 +354,11 @@ export default function Historial() {
                   Agrega tu primera transacción desde el Registro
                 </p>
               </div>
-            ) : displayedTransactions.length === 0 ? (
+                ) : displayedTransactions.length === 0 ? (
               <div className="bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col items-center justify-center min-h-[200px]">
                 <Wallet className="w-12 h-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground text-center">
-                  No hay transacciones en efectivo
+                  {activeFilter === "efectivo" ? "No hay transacciones en efectivo" : "No hay transacciones registradas"}
                 </p>
               </div>
             ) : (
