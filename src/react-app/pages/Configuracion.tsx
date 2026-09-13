@@ -5,7 +5,7 @@ import { Button } from "@/react-app/components/ui/button";
 import { Input } from "@/react-app/components/ui/input";
 import { Label } from "@/react-app/components/ui/label";
 import { useSettings } from "@/react-app/hooks/useSettings";
-import { DollarSign, Loader2, Save, TrendingUp, LogOut, Lock } from "lucide-react";
+import { DollarSign, Loader2, Save, TrendingUp, LogOut, Lock, RotateCcw, AlertTriangle, Trash2 } from "lucide-react";
 import { supabase } from "@/react-app/supabase";
 import { useNavigate } from "react-router";
 
@@ -15,6 +15,89 @@ export default function Configuracion() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
+
+  // ── Deshacer último cierre ──────────────────────────────────
+  const [undoing, setUndoing] = useState(false);
+
+  const handleUndoLastClose = async () => {
+    if (!window.confirm("⚠️ ¿Deshacer el último cierre?\n\nLas transacciones del cierre más reciente volverán al historial activo.")) return;
+
+    setUndoing(true);
+    try {
+      // Buscar la fecha del cierre más reciente
+      const { data: lastArchived, error: fetchError } = await supabase
+        .from("transactions")
+        .select("created_at")
+        .eq("status", "Archivado")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (fetchError || !lastArchived) {
+        alert("No hay cierres anteriores para deshacer.");
+        return;
+      }
+
+      // Obtener la fecha (solo YYYY-MM-DD) del último cierre
+      const lastCloseDate = lastArchived.created_at.split("T")[0];
+      const dayStart = `${lastCloseDate}T00:00:00`;
+      const dayEnd = `${lastCloseDate}T23:59:59`;
+
+      // Restaurar todas las transacciones de ese día a 'Pagado'
+      const { error: updateError } = await supabase
+        .from("transactions")
+        .update({ status: "Pagado" })
+        .eq("status", "Archivado")
+        .gte("created_at", dayStart)
+        .lte("created_at", dayEnd);
+
+      if (updateError) throw updateError;
+      alert("Cierre deshecho exitosamente. Las transacciones volvieron al historial activo.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al deshacer el cierre.");
+    } finally {
+      setUndoing(false);
+    }
+  };
+
+  // ── Borrar base de datos ─────────────────────────────────────
+  const [wipeModalOpen, setWipeModalOpen] = useState(false);
+  const [wipePassword, setWipePassword] = useState("");
+  const [wipeError, setWipeError] = useState("");
+  const [wiping, setWiping] = useState(false);
+
+  const handleWipeDatabase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wipePassword) { setWipeError("Ingresa tu contraseña."); return; }
+
+    setWiping(true);
+    setWipeError("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("No hay sesión activa.");
+
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: wipePassword,
+      });
+      if (authError) { setWipeError("Contraseña incorrecta."); return; }
+
+      // Borrar todas las transacciones del usuario
+      const { error: deleteError } = await supabase
+        .from("transactions")
+        .delete()
+        .not("id", "is", null);
+
+      if (deleteError) throw deleteError;
+
+      setWipeModalOpen(false);
+      alert("Base de datos eliminada correctamente. El sistema está listo para empezar de cero.");
+    } catch (err) {
+      setWipeError(err instanceof Error ? err.message : "Error inesperado.");
+    } finally {
+      setWiping(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -265,21 +348,51 @@ export default function Configuracion() {
             <p className="text-sm text-destructive/80 mb-4">
               Archiva todas las transacciones actuales marcadas como "Pagado" para empezar un nuevo ciclo. Las deudas pendientes se mantendrán.
             </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (window.confirm("¿Estás seguro de realizar el cierre de caja? Esto archivará las transacciones actuales.")) {
+                    setSaving(true);
+                    const { error } = await supabase.from("transactions").update({ status: "Archivado" }).eq("status", "Pagado");
+                    if (error) alert("Error: " + error.message);
+                    else alert("Cierre de caja exitoso");
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving || undoing}
+                className="flex-1 font-semibold"
+              >
+                Realizar Cierre de Caja
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleUndoLastClose}
+                disabled={saving || undoing}
+                className="sm:w-auto font-semibold border-destructive/50 text-destructive hover:bg-destructive/10"
+              >
+                {undoing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+                Deshacer Último Cierre
+              </Button>
+            </div>
+          </div>
+
+          {/* Zona Peligrosa */}
+          <div className="bg-destructive/5 rounded-xl p-6 border border-destructive/30 mb-2">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <h3 className="text-lg font-semibold text-destructive">Zona Peligrosa</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Elimina <strong>todas</strong> las transacciones permanentemente. Tu cuenta, tasa de cambio y configuración se mantendrán intactas.
+            </p>
             <Button
               variant="destructive"
-              onClick={async () => {
-                if (window.confirm("¿Estás seguro de realizar el cierre de caja? Esto archivará las transacciones actuales.")) {
-                  setSaving(true);
-                  const { error } = await supabase.from("transactions").update({ status: "Archivado" }).eq("status", "Pagado");
-                  if (error) alert("Error: " + error.message);
-                  else alert("Cierre de caja exitoso");
-                  setSaving(false);
-                }
-              }}
-              disabled={saving}
+              onClick={() => { setWipePassword(""); setWipeError(""); setWipeModalOpen(true); }}
               className="w-full font-semibold"
             >
-              Realizar Cierre de Caja
+              <Trash2 className="w-4 h-4 mr-2" />
+              Borrar Toda la Base de Datos
             </Button>
           </div>
 
@@ -295,6 +408,51 @@ export default function Configuracion() {
             Sesión persistente activada (Permanecerás logueado al cerrar el navegador)
           </p>
         </div>
+
+        {/* Modal: Confirmar borrado total */}
+        {wipeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-card border border-destructive/40 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+                <h3 className="text-lg font-bold text-destructive">Confirmar Borrado</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Para confirmar, ingresa tu contraseña de acceso. Esta acción es <strong>irreversible</strong>.
+              </p>
+              <form onSubmit={handleWipeDatabase} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wipe-password">Contraseña</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <Input
+                      id="wipe-password"
+                      type="password"
+                      placeholder="Tu contraseña de acceso"
+                      value={wipePassword}
+                      onChange={(e) => { setWipePassword(e.target.value); setWipeError(""); }}
+                      className="pl-10"
+                      disabled={wiping}
+                      autoFocus
+                    />
+                  </div>
+                  {wipeError && <p className="text-xs text-destructive font-semibold">{wipeError}</p>}
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setWipeModalOpen(false)} disabled={wiping}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" variant="destructive" className="flex-1 font-bold" disabled={wiping || !wipePassword}>
+                    {wiping ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                    Sí, Borrar Todo
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </Layout>
   );
