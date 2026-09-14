@@ -204,11 +204,17 @@ export default function Historial() {
       const amountVes = tx.original_amount_bs !== null && tx.original_amount_bs !== undefined
         ? Math.abs(tx.original_amount_bs)
         : Math.abs(tx.amount_usd) * txExchangeRate;
-        
-      if (isExpense) {
-        currentBalanceVes -= amountVes;
-      } else {
-        currentBalanceVes += amountVes;
+
+      // Solo las transacciones que afectan el Dinero Real en Caja modifican el saldo progresivo.
+      // Las de tipo Deudor o Personal (sin caja) se muestran en la lista pero no mueven el saldo.
+      const afectaCajaReal = tx.status === "Pagado" || tx.status === "Personal (Caja)";
+
+      if (afectaCajaReal) {
+        if (isExpense) {
+          currentBalanceVes -= amountVes;
+        } else {
+          currentBalanceVes += amountVes;
+        }
       }
       
       const balanceUsd = txExchangeRate > 0 ? currentBalanceVes / txExchangeRate : 0;
