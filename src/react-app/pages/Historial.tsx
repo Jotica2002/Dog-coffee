@@ -107,7 +107,9 @@ function TransactionCard({
                   ? "bg-green-100 text-green-700"
                   : transaction.status === "Deudor"
                     ? "bg-accent text-accent-foreground"
-                    : "bg-blue-100 text-blue-700"
+                    : transaction.status === "Archivado"
+                      ? "bg-gray-100 text-gray-700"
+                      : "bg-blue-100 text-blue-700"
                   }`}
               >
                 {transaction.status}
@@ -124,21 +126,23 @@ function TransactionCard({
               </span>
             )}
           </div>
-          <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
-            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => onEdit(transaction)}>
-              <Pencil className="w-4 h-4 mr-1" /> Editar
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(transaction)}>
-              <Trash2 className="w-4 h-4 mr-1" /> Eliminar
-            </Button>
-          </div>
+          {transaction.status !== "Archivado" && (
+            <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-border/50">
+              <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => onEdit(transaction)}>
+                <Pencil className="w-4 h-4 mr-1" /> Editar
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(transaction)}>
+                <Trash2 className="w-4 h-4 mr-1" /> Eliminar
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function ArchivedDayCard({ summary }: { summary: ArchivedSummary }) {
+function ArchivedDayCard({ summary, onClick }: { summary: ArchivedSummary; onClick: () => void }) {
   const displayDate = new Date(summary.date + "T12:00:00Z").toLocaleDateString("es-VE", {
     weekday: 'long',
     day: "numeric",
@@ -147,7 +151,10 @@ function ArchivedDayCard({ summary }: { summary: ArchivedSummary }) {
   });
 
   return (
-    <div className="bg-muted/20 rounded-lg p-4 shadow-sm border border-border">
+    <div 
+      className="bg-muted/20 rounded-lg p-4 shadow-sm border border-border cursor-pointer hover:bg-muted/40 transition-colors"
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-bold text-foreground capitalize">{displayDate}</p>
@@ -187,6 +194,7 @@ export default function Historial() {
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"todo" | "efectivo">("todo");
+  const [selectedArchivedDay, setSelectedArchivedDay] = useState<ArchivedSummary | null>(null);
 
   const displayedTransactions = activeFilter === "efectivo"
     ? transactions.filter(tx => tx.status === "Pagado" || tx.status === "Personal (Caja)")
@@ -413,6 +421,7 @@ export default function Historial() {
                   <ArchivedDayCard
                     key={summary.date}
                     summary={summary}
+                    onClick={() => setSelectedArchivedDay(summary)}
                   />
                 ))}
               </div>
@@ -473,6 +482,67 @@ export default function Historial() {
           refetch();
         }}
       />
+
+      {/* Archived Day Details Modal */}
+      <Dialog open={!!selectedArchivedDay} onOpenChange={(open) => !open && setSelectedArchivedDay(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          {selectedArchivedDay && (
+            <>
+              <div className="p-6 border-b border-border bg-muted/10">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">
+                    Cierre del día {new Date(selectedArchivedDay.date + "T12:00:00Z").toLocaleDateString("es-VE", {
+                      weekday: 'long',
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric"
+                    })}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {selectedArchivedDay.count} transacciones archivadas en este ciclo
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid grid-cols-2 gap-4 mt-4 bg-background p-4 rounded-lg border border-border">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Total Ingresos</p>
+                    <CurrencyDisplay
+                      amountUsd={selectedArchivedDay.transactions.filter(tx => tx.transaction_type !== 'Gasto').reduce((acc, tx) => acc + Math.abs(tx.amount_usd), 0)}
+                      exchangeRate={exchangeRate}
+                      className="text-green-600 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Total Gastos</p>
+                    <CurrencyDisplay
+                      amountUsd={selectedArchivedDay.transactions.filter(tx => tx.transaction_type === 'Gasto').reduce((acc, tx) => acc + Math.abs(tx.amount_usd), 0)}
+                      exchangeRate={exchangeRate}
+                      className="text-destructive font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 bg-muted/5">
+                <div className="space-y-3">
+                  {selectedArchivedDay.transactions.map((tx) => (
+                    <TransactionCard
+                      key={tx.id}
+                      transaction={tx}
+                      exchangeRate={tx.exchange_rate || exchangeRate}
+                      onEdit={() => {}} // Disabled in archived view
+                      onDelete={() => {}} // Disabled in archived view
+                    />
+                  ))}
+                </div>
+              </div>
+              <DialogFooter className="p-4 border-t border-border bg-background">
+                <Button variant="outline" onClick={() => setSelectedArchivedDay(null)}>Cerrar</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
