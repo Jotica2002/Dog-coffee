@@ -24,8 +24,18 @@ export default function Registro() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Formateador robusto para la zona horaria de Venezuela
+  const getLocalDateString = () => {
+    return new Intl.DateTimeFormat('en-CA', { 
+      timeZone: 'America/Caracas',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+  };
+
   // Form state
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(getLocalDateString());
   const [transactionType, setTransactionType] = useState<TransactionType | "">("");
   const [description, setDescription] = useState("");
   const [currencyInput, setCurrencyInput] = useState<"USD" | "VES">("USD");
@@ -74,7 +84,7 @@ export default function Registro() {
 
     try {
       // Ajustamos la fecha: Si es hoy, guarda la hora exacta. Si es un día anterior, le pone las 12 del mediodía para evitar saltos de zona horaria.
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       const transactionDate = date === today
         ? new Date().toISOString()
         : new Date(date + "T12:00:00Z").toISOString();
